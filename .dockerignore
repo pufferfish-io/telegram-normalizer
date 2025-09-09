@@ -1,0 +1,35 @@
+# VCS
+.git
+.gitignore
+.dockerignore
+
+# Go build outputs
+bin/
+build/
+dist/
+out/
+
+# Caches and temp
+.cache/
+tmp/
+
+# Tests and coverage artifacts
+**/*_test.go
+*.out
+coverage.*
+*.coverprofile
+profile.cov
+
+# IDE/editor
+.idea/
+.vscode/
+.DS_Store
+
+# Local env and config
+.env
+.env.*
+config.yaml
+
+# Docs and misc not needed in image
+README.md
+scripts/

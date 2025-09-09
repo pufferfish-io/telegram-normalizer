@@ -2,63 +2,82 @@ package main
 
 import (
 	"context"
-	"log"
 	"os"
 	"os/signal"
 	"syscall"
-	cfg "telegram-normalizer/internal/config"
-	cfgModel "telegram-normalizer/internal/config/model"
+
+	"telegram-normalizer/internal/config"
+	"telegram-normalizer/internal/logger"
 	"telegram-normalizer/internal/messaging"
-	"telegram-normalizer/internal/processor"
 	"telegram-normalizer/internal/s3"
+	"telegram-normalizer/internal/telegram"
+	"telegram-normalizer/internal/tgnorm"
 )
 
 func main() {
-	log.Println("🚀 Starting telegram-normalizer...")
+	// init logger first to use it everywhere
+	lg, cleanup := logger.NewZapLogger()
+	defer cleanup()
+	lg.Info("🚀 Starting telegram-normalizer…")
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	kafkaConf, err := cfg.LoadSection[cfgModel.KafkaConfig]()
+	cfg, err := config.Load()
 	if err != nil {
-		log.Fatalf("❌ Failed to load Kafka config: %v", err)
+		lg.Error("❌ Failed to load config: %v", err)
+		os.Exit(1)
 	}
 
-	s3Conf, err := cfg.LoadSection[cfgModel.S3Config]()
+	uploader, err := s3.NewUploader(s3.Option{
+		Endpoint:  cfg.S3.Endpoint,
+		AccessKey: cfg.S3.AccessKey,
+		SecretKey: cfg.S3.SecretKey,
+		Bucket:    cfg.S3.Bucket,
+		UseSSL:    cfg.S3.UseSSL,
+	})
 	if err != nil {
-		log.Fatalf("S3 config error: %v", err)
+		lg.Error("❌ Failed to create S3 uploader: %v", err)
+		os.Exit(1)
 	}
 
-	tgConf, err := cfg.LoadSection[cfgModel.TelegramConfig]()
+	downloader := telegram.NewDownloader(cfg.Telegram.Token)
+
+	producer, err := messaging.NewKafkaProducer(messaging.Option{
+		Logger:       lg,
+		Broker:       cfg.Kafka.BootstrapServersValue,
+		SaslUsername: cfg.Kafka.SaslUsername,
+		SaslPassword: cfg.Kafka.SaslPassword,
+		ClientID:     cfg.Kafka.ClientID,
+	})
 	if err != nil {
-		log.Fatalf("TG config error: %v", err)
+		lg.Error("❌ Failed to create Kafka producer: %v", err)
+		os.Exit(1)
 	}
 
-	uploader, err := s3.NewUploader(s3.Config{
-		Endpoint:  s3Conf.Endpoint,
-		AccessKey: s3Conf.AccessKey,
-		SecretKey: s3Conf.SecretKey,
-		Bucket:    s3Conf.Bucket,
-		UseSSL:    s3Conf.UseSSL,
-		BaseURL:   s3Conf.BaseURL,
+	parser := telegram.NewTgMessageParser()
+
+	normalizer := tgnorm.NewTelegramNormalizer(tgnorm.Option{
+		KafkaTopic: cfg.Kafka.NormalizerTopicName,
+		Uploader:   uploader,
+		Parser:     parser,
+		Downloader: downloader,
+		Producer:   producer,
 	})
 
+	consumer, err := messaging.NewKafkaConsumer(messaging.ConsumerOption{
+		Logger:       lg,
+		Broker:       cfg.Kafka.BootstrapServersValue,
+		GroupID:      cfg.Kafka.GroupID,
+		Topics:       []string{cfg.Kafka.TgMessTopicName},
+		Handler:      normalizer,
+		SaslUsername: cfg.Kafka.SaslUsername,
+		SaslPassword: cfg.Kafka.SaslPassword,
+		ClientID:     cfg.Kafka.ClientID,
+	})
 	if err != nil {
-		log.Fatalf("❌ Failed to create S3 uploader: %v", err)
-	}
-
-	normalizer := processor.NewTelegramNormalizer(tgConf.Token, kafkaConf.TelegramNormalizerTopicName, uploader)
-
-	handler := func(msg []byte) error {
-		log.Printf("🔧 Handle message: %s", string(msg))
-		return normalizer.Handle(ctx, msg)
-	}
-
-	messaging.Init(kafkaConf.BootstrapServersValue)
-
-	consumer, err := messaging.NewConsumer(kafkaConf.BootstrapServersValue, kafkaConf.TelegramUpdatesGroupId, kafkaConf.TelegramUpdatesTopicName, handler)
-	if err != nil {
-		log.Fatalf("❌ Failed to create consumer: %v", err)
+		lg.Error("❌ Failed to create consumer: %v", err)
+		os.Exit(1)
 	}
 
 	go func() {
@@ -69,6 +88,7 @@ func main() {
 	}()
 
 	if err := consumer.Start(ctx); err != nil {
-		log.Fatalf("❌ Consumer error: %v", err)
+		lg.Error("❌ Consumer error: %v", err)
+		os.Exit(1)
 	}
 }

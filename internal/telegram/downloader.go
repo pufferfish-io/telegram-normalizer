@@ -9,6 +9,11 @@ import (
 	"github.com/go-resty/resty/v2"
 )
 
+const NormalizedMessageDocType = "document"
+
+const TelegramGetFileInfoUrl = "https://api.telegram.org/bot%s/getFile"
+const TelegramDownloadFileUrl = "https://api.telegram.org/file/bot%s/%s"
+
 type Downloader struct {
 	Token string
 	Api   *resty.Client
@@ -41,7 +46,7 @@ func (d *Downloader) GetFilePath(fileID string) (string, error) {
 	}
 
 	if !result.OK {
-		return "", fmt.Errorf("Telegram API error: %s", resp.String())
+		return "", fmt.Errorf("telegram API error: %s", resp.String())
 	}
 
 	return result.Result.FilePath, nil
