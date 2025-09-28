@@ -8,7 +8,7 @@ import (
 	"telegram-normalizer/internal/contract"
 )
 
-const NormalizedMessageSource = "telegram"
+const NormalizedMessageSource = "tg"
 const NormalizedMessageImageType = "photo"
 
 type Update struct {
