@@ -9,12 +9,12 @@ import (
 
 type Kafka struct {
 	BootstrapServersValue string `validate:"required" env:"BOOTSTRAP_SERVERS_VALUE"`
-	GroupID               string `validate:"required" env:"GROUP_ID"`
-	TgMessTopicName       string `validate:"required" env:"TG_MESS_TOPIC_NAME"`
-	NormalizerTopicName   string `env:"NORMALIZER_TOPIC_NAME"`
+	GroupID               string `validate:"required" env:"GROUP_ID_TELEGRAM_NORMALIZER"`
+	TgMessTopicName       string `validate:"required" env:"TOPIC_NAME_TELEGRAM_UPDATES"`
+	NormalizerTopicName   string `env:"TOPIC_NAME_NORMALIZED_MSG"`
 	SaslUsername          string `env:"SASL_USERNAME"`
 	SaslPassword          string `env:"SASL_PASSWORD"`
-	ClientID              string `env:"CLIENT_ID"`
+	ClientID              string `env:"CLIENT_ID_TELEGRAM_NORMALIZER"`
 }
 
 type Telegram struct {
@@ -30,9 +30,9 @@ type S3 struct {
 }
 
 type Config struct {
-	Kafka    Kafka    `envPrefix:"TG_NORM_KAFKA_"`
-	Telegram Telegram `envPrefix:"TG_NORM_TELEGRAM_"`
-	S3       S3       `envPrefix:"TG_NORM_S3_"`
+	Telegram Telegram `envPrefix:"TELEGRAM"`
+	Kafka    Kafka    `envPrefix:"KAFKA_"`
+	S3       S3       `envPrefix:"S3_"`
 }
 
 func Load() (*Config, error) {

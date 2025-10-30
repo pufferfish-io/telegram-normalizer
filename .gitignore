@@ -21,6 +21,7 @@ bin/
 build/
 dist/
 out/
+telegram-normalizer
 
 # Caches and temp
 .cache/

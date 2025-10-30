@@ -21,13 +21,13 @@ set -a && source .env && set +a && go run ./cmd/telegram-normalizer
 ```
 
 ```
-git tag v0.1.1
-git push origin v0.1.1
+git tag v0.0.1
+git push origin v0.0.1
 ```
 
 ```
 git tag -l
-git tag -d vX.Y.Z
-git push --delete origin vX.Y.Z
-git ls-remote --tags origin | grep 'refs/tags/vX.Y.Z$'
+git tag -d v0.0.1
+git push --delete origin v0.0.1
+git ls-remote --tags origin | grep 'refs/tags/v0.0.1$'
 ```
