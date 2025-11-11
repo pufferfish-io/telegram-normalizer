@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"telegram-normalizer/internal/config"
 	"telegram-normalizer/internal/logger"
@@ -88,12 +89,32 @@ func main() {
 		cancel()
 	}()
 
-	if err := consumer.Start(ctx); err != nil {
+	runConsumerSupervisor(ctx, consumer, lg)
+}
+
+func runConsumerSupervisor(ctx context.Context, consumer *messaging.KafkaConsumer, lg logger.Logger) {
+	wait := 1 * time.Second
+	maxWait := 30 * time.Second
+	for {
+		err := consumer.Start(ctx)
+		if err == nil {
+			lg.Info("consumer finished without error")
+			return
+		}
 		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 			lg.Info("consumer stopped: %v", err)
-		} else {
-			lg.Error("❌ Consumer error: %v", err)
-			os.Exit(1)
+			return
+		}
+		lg.Error("consumer error: %v — retry in %s", err, wait)
+		select {
+		case <-time.After(wait):
+			wait *= 2
+			if wait > maxWait {
+				wait = maxWait
+			}
+		case <-ctx.Done():
+			lg.Info("context canceled while waiting to restart consumer: %v", ctx.Err())
+			return
 		}
 	}
 }
