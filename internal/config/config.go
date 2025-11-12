@@ -30,7 +30,7 @@ type S3 struct {
 }
 
 type Config struct {
-	Telegram Telegram `envPrefix:"TELEGRAM"`
+	Telegram Telegram `envPrefix:"TELEGRAM_"`
 	Kafka    Kafka    `envPrefix:"KAFKA_"`
 	S3       S3       `envPrefix:"S3_"`
 }
