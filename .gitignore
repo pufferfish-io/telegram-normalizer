@@ -34,11 +34,27 @@ tmp/
 .env
 .env.*
 config.yaml
+config.local.yaml
+client.properties
+
+# Secrets and credentials
+secrets/
+*.pem
+*.key
+*.p12
+*.pfx
+*.cert
+*.crt
+*.csr
+*_secret*
+*secret*.txt
 
 # IDE/editor
 .idea/
 .vscode/
 .DS_Store
+.fleet/
+Thumbs.db
 
 # Dependencies (uncomment if you vendor)
 # vendor/
